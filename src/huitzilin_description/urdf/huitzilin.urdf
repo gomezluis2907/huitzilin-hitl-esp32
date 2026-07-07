@@ -1,0 +1,226 @@
+<?xml version="1.0"?>
+<robot name="huitzilin">
+
+    <!--Dummy link-->
+    <link name="base_footprint">
+    </link>
+
+    <!-- Frame -->
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://huitzilin_description/meshes/x3.dae"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.47 0.47 0.11" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="1.5" />
+            <inertia ixx="0.0347563" ixy="0.0" ixz="0.0" iyy="0.07" iyz="0.0" izz="0.0977"/>
+        </inertial>
+    </link>
+
+    <link name="rotor0_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://huitzilin_description/meshes/propeller_ccw.dae" scale="0.1 0.1 0.1"/>
+            </geometry >
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </visual>
+        <collision>
+            <geometry>
+                 <cylinder length="0.005" radius="0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.005" />
+            <inertia ixx="9.75e-07" ixy="0.0" ixz="0.0" iyy="4.17041e-05" iyz="0.0" izz="4.26041e-05"/>
+        </inertial>
+    </link>
+
+    <link name="rotor1_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://huitzilin_description/meshes/propeller_ccw.dae" scale="0.1 0.1 0.1"/>
+            </geometry >
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </visual>
+        <collision>
+            <geometry>
+                 <cylinder length="0.005" radius="0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.005" />
+            <inertia ixx="9.75e-07" ixy="0.0" ixz="0.0" iyy="4.17041e-05" iyz="0.0" izz="4.26041e-05"/>
+        </inertial>
+    </link>
+
+    <link name="rotor2_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://huitzilin_description/meshes/propeller_cw.dae" scale="0.1 0.1 0.1"/>
+            </geometry >
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </visual>
+        <collision>
+            <geometry>
+                 <cylinder length="0.005" radius="0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.005" />
+            <inertia ixx="9.75e-07" ixy="0.0" ixz="0.0" iyy="4.17041e-05" iyz="0.0" izz="4.26041e-05"/>
+        </inertial>
+    </link>
+
+    <link name="rotor3_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://huitzilin_description/meshes/propeller_cw.dae" scale="0.1 0.1 0.1"/>
+            </geometry >
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </visual>
+        <collision>
+            <geometry>
+                 <cylinder length="0.005" radius="0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="0.005" />
+            <inertia ixx="9.75e-07" ixy="0.0" ixz="0.0" iyy="4.17041e-05" iyz="0.0" izz="4.26041e-05"/>
+        </inertial>
+    </link>
+
+    <joint name="footprint_base_joint" type="fixed">
+        <parent link="base_footprint" />
+        <child link="base_link" />
+    </joint>
+
+    <joint name="base_rotor0_joint" type="continuous">
+        <axis xyz="0 0 1" />
+        <origin xyz="0.13 -0.22 0.023" rpy="0 0 0" />
+        <parent link="base_link" />
+        <child link="rotor0_link" />
+    </joint>
+    
+    <joint name="base_rotor1_joint" type="continuous">
+        <axis xyz="0 0 1" />
+        <origin xyz="-0.13 0.2 0.023" rpy="0 0 0" />
+        <parent link="base_link" />
+        <child link="rotor1_link" />
+    </joint>
+
+    <joint name="base_rotor2_joint" type="continuous">
+        <axis xyz="0 0 1" />
+        <origin xyz="0.13 0.22 0.023" rpy="0 0 0" />
+        <parent link="base_link" />
+        <child link="rotor2_link" />
+    </joint>
+    
+    <joint name="base_rotor3_joint" type="continuous">
+        <axis xyz="0 0 1" />
+        <origin xyz="-0.13 -0.2 0.023" rpy="0 0 0" />
+        <parent link="base_link" />
+        <child link="rotor3_link" />
+    </joint>
+
+    <!--Gazebo plugins-->
+    <gazebo>
+        <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>huitzilin</robotNamespace>
+            <jointName>base_rotor0_joint</jointName>
+            <linkName>rotor0_link</linkName>
+            <turningDirection>ccw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>800.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <actuator_number>0</actuator_number>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/0</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+    </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>huitzilin</robotNamespace>
+            <jointName>base_rotor1_joint</jointName>
+            <linkName>rotor1_link</linkName>
+            <turningDirection>ccw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>800.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <actuator_number>1</actuator_number>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/1</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+    </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>huitzilin</robotNamespace>
+            <jointName>base_rotor2_joint</jointName>
+            <linkName>rotor2_link</linkName>
+            <turningDirection>cw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>800.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <actuator_number>2</actuator_number>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/2</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+    </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-multicopter-motor-model-system" name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>huitzilin</robotNamespace>
+            <jointName>base_rotor3_joint</jointName>
+            <linkName>rotor3_link</linkName>
+            <turningDirection>cw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>800.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <actuator_number>3</actuator_number>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/3</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+    </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+            <joint_name>base_rotor0_joint</joint_name>
+            <joint_name>base_rotor1_joint</joint_name>
+            <joint_name>base_rotor2_joint</joint_name>
+            <joint_name>base_rotor3_joint</joint_name>
+        </plugin>
+    </gazebo>
+        
+</robot>
