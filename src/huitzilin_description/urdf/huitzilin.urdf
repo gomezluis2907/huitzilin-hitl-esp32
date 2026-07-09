@@ -96,6 +96,11 @@
         </inertial>
     </link>
 
+    <!--IMU-->
+    <link name="imu_link">
+    </link>
+
+    <!--Joints-->
     <joint name="footprint_base_joint" type="fixed">
         <parent link="base_footprint" />
         <child link="base_link" />
@@ -128,6 +133,14 @@
         <parent link="base_link" />
         <child link="rotor3_link" />
     </joint>
+
+    <joint name="base_imu_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <parent link="base_link"/>
+        <child link="imu_link" />
+    </joint>
+
+
 
     <!--Gazebo plugins-->
     <gazebo>
@@ -221,6 +234,20 @@
             <joint_name>base_rotor2_joint</joint_name>
             <joint_name>base_rotor3_joint</joint_name>
         </plugin>
+    </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu">
+        </plugin>
+    </gazebo>
+
+    <gazebo reference="imu_link">
+        <sensor name="imu_sensor" type="imu">
+            <always_on>1</always_on>
+            <update_rate>250</update_rate>
+             <visualize>true</visualize>
+            <topic>imu</topic>
+        </sensor>
     </gazebo>
         
 </robot>

@@ -15,3 +15,11 @@
   ros_type_name: "actuator_msgs/msg/Actuators"
   gz_type_name: "gz.msgs.Actuators"
   direction: ROS_TO_GZ
+
+- ros_topic_name: "/huitzilin/imu"
+  gz_topic_name: "/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS
+
+
