@@ -15,7 +15,6 @@ struct ImuDataPacket
     uint8_t header1;
     uint8_t header2;
 
-
     float pitch;
     float roll;
     float yaw;
