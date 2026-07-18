@@ -6,9 +6,10 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <geometry_msgs/msg/twist.hpp>
 
-// No padding
-#pragma pack(push, 1) 
+
+#pragma pack(push, 1) //No padding
 struct ImuDataPacket 
 {
     // Magic Bytes
@@ -19,16 +20,36 @@ struct ImuDataPacket
     float roll;
     float yaw;
 };
-#pragma pack(pop)
+#pragma pack(pop) //No padding
+
+#pragma pack(push, 1)
+struct KeysDataPacket
+{
+    // Magic Bytes
+    uint8_t header1;
+    uint8_t header2;
+
+    float pitch;
+    float roll;
+    float yaw;
+    float throttle;
+};
+#pragma pack(pop) // No padding
 
 class HuitzilinSerialNode : public rclcpp::Node 
 {
 public:
     HuitzilinSerialNode() : Node("huitzilin_serial") 
     {
-        subscription_ = this->create_subscription<sensor_msgs::msg::Imu>("/huitzilin/imu", 10,
+        // /huitzilin/imu subscriber
+        imu_subscription_ = this->create_subscription<sensor_msgs::msg::Imu>("/huitzilin/imu", 10,
                                                                         std::bind(&HuitzilinSerialNode::callbackHuitzilinImu, 
                                                                         this, std::placeholders::_1));
+        
+        // /cmd_vel subscriber
+        cmd_vel_subscription_ = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, 
+                                                                            std::bind(&HuitzilinSerialNode::callbackCmdVel, 
+                                                                            this, std::placeholders::_1));
         
         // Open the USB port and assign it to the CLASS variable, not a local variable
         usb_port_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);
@@ -66,9 +87,11 @@ public:
 private:
     // Declare member variables here so the whole class can see them
     int usb_port_; 
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subscription_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscription_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
+    
 
-    // Callback 
+    // Imu callback 
     void callbackHuitzilinImu(const sensor_msgs::msg::Imu::SharedPtr msg)
     {
         // Load IMU data into a Quaternion object
@@ -89,23 +112,46 @@ private:
         RCLCPP_INFO(this->get_logger(), "Roll: %f, Pitch: %f, Yaw: %f", roll, pitch, yaw);
 
         // Struct instance
-        ImuDataPacket my_packet;
+        ImuDataPacket imu_packet;
 
         // Magic Bytes
-        my_packet.header1 = 0xAA;
-        my_packet.header2 = 0xBB;
+        imu_packet.header1 = 0xAA;
+        imu_packet.header2 = 0xBB;
 
         // Explicitly cast down to float to prevent compiler warnings
-        my_packet.roll = (float)roll;
-        my_packet.pitch = (float)pitch;
-        my_packet.yaw = (float)yaw;
+        imu_packet.roll = (float)roll;
+        imu_packet.pitch = (float)pitch;
+        imu_packet.yaw = (float)yaw;
 
-        // Cast &my_packet as uint8_t in order for the compiler to read byte by byte
-        uint8_t* raw_bytes = (uint8_t*)&my_packet;
+        // Cast &imu_packet as uint8_t in order for the compiler to read byte by byte
+        uint8_t* imu_bytes = (uint8_t*)&imu_packet;
         
-        // Write using the class variable
-        write(usb_port_, raw_bytes, sizeof(ImuDataPacket));
+        // Write 
+        write(usb_port_, imu_bytes, sizeof(ImuDataPacket));
     }
+
+    void callbackCmdVel(const geometry_msgs::msg::Twist::SharedPtr msg)
+    {
+        // Struct instance 
+        KeysDataPacket key_packet;
+
+        // Magic Bytes
+        key_packet.header1 = 0xCC;
+        key_packet.header2 = 0xDD;
+
+        key_packet.pitch = msg->linear.x;
+        key_packet.roll = msg->linear.y;
+        key_packet.yaw = msg->angular.z;
+        key_packet.throttle = msg->linear.z;
+
+        // Cast &key_packet as uint8_t in order for the compiler to read byte by byte
+        uint8_t* key_bytes = (uint8_t*)&key_packet;
+
+        // Write
+        write(usb_port_, key_bytes, sizeof(KeysDataPacket));
+
+    };
+
 };
  
 int main(int argc, char **argv)
