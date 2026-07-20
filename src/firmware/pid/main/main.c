@@ -11,28 +11,37 @@
 
 static const char *TAG = "HUITZILIN_UART";
 
-// 1. The Blueprint for the 12-byte payload
-// __attribute__((packed)) does exactly what #pragma pack(push, 1) did in Ubuntu
+// Payload blueprint
 typedef struct __attribute__((packed)) {
     float pitch;
     float roll;
     float yaw;
 } ImuPayload;
 
-// 2. The States
+// Payload blueprint
+typedef struct __attribute__((packed)){
+    float pitch;
+    float roll;
+    float yaw;
+    float throttle;
+} KeysPayload;
+
+// States
 typedef enum {
-    WAIT_FOR_AA,
+    WAIT_FOR_HEADER1,
     WAIT_FOR_BB,
-    READ_PAYLOAD
+    WAIT_FOR_DD,
+    READ_IMU_PAYLOAD,
+    READ_KEYS_PAYLOAD
 } SerialState;
 
-// 3. The FreeRTOS Task
-void uart_rx_task(void *arg) 
+// FreeRTOS Task
+void uart_rx_task(void *pvParameters) 
 {
     uint8_t raw_bytes[BUF_SIZE];
-    SerialState current_state = WAIT_FOR_AA;
+    SerialState current_state = WAIT_FOR_HEADER1;
     
-    uint8_t payload[12];
+    uint8_t payload[16];
     int payload_index = 0;
 
     while (1) {
@@ -42,38 +51,71 @@ void uart_rx_task(void *arg)
             uint8_t byte = raw_bytes[i];
 
             switch (current_state) {
-                case WAIT_FOR_AA:
+                
+                case WAIT_FOR_HEADER1:
                     if (byte == 0xAA) current_state = WAIT_FOR_BB;
+                    else if (byte == 0xCC) current_state = WAIT_FOR_DD;
                     break;
 
                 case WAIT_FOR_BB:
                     if (byte == 0xBB) {
-                        current_state = READ_PAYLOAD;
+                        current_state = READ_IMU_PAYLOAD;
                         payload_index = 0;
                     } else if (byte == 0xAA) {
                         current_state = WAIT_FOR_BB;
-                    } else {
-                        current_state = WAIT_FOR_AA;
+                    } else if (byte == 0xCC) {
+                        current_state = WAIT_FOR_DD;
+                    }else {
+                        current_state = WAIT_FOR_HEADER1;
                     }
                     break;
-
-                case READ_PAYLOAD:
+                
+                case WAIT_FOR_DD:
+                    if (byte == 0xDD) {
+                        current_state = READ_KEYS_PAYLOAD;
+                        payload_index = 0;
+                    } else if (byte == 0xAA) {
+                        current_state = WAIT_FOR_BB;
+                    } else if (byte == 0xCC) {
+                        current_state = WAIT_FOR_DD;
+                    } else {
+                        current_state = WAIT_FOR_HEADER1;
+                    }
+                    break;
+                
+                case READ_IMU_PAYLOAD:
                     payload[payload_index] = byte;
                     payload_index++;
 
                     if (payload_index == 12) {
-                        
-                        // --- THE RECONSTRUCTION ---
-                        // Put on the "ImuPayload" glasses and look at the 12-byte array
+
                         ImuPayload* imu_data = (ImuPayload*)payload;
-                        
-                        // Print the pure floats to the ESP32 terminal!
+
+                        // Print 
                         ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
                                  imu_data->pitch, imu_data->roll, imu_data->yaw);
                         
-                        current_state = WAIT_FOR_AA;
+                        current_state = WAIT_FOR_HEADER1;
+
                     }
                     break;
+
+                case READ_KEYS_PAYLOAD:
+                    payload[payload_index] = byte;
+                    payload_index++;
+
+                    if (payload_index == 16) {
+
+                        KeysPayload* keys_data = (KeysPayload*)payload;
+
+                        // Print
+                        ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f | Throttle: %.2f", 
+                                 keys_data->pitch, keys_data->roll, keys_data->yaw, keys_data->throttle);
+                        
+                        current_state = WAIT_FOR_HEADER1;
+                    }
+                    break;
+
             }
         }
     }
@@ -95,15 +137,14 @@ void app_main(void)
     uart_param_config(UART_PORT_NUM, &uart_config);
     uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-    // 4. Launch the FreeRTOS task!
-    // This tells the operating system to start running your infinite loop in the background.
+    // Launch FreeRTOS task
     xTaskCreatePinnedToCore(
-        uart_rx_task,       // The function to run
-        "uart_rx_task",     // A human-readable name for debugging
-        4096,               // Stack size (How much RAM to give this task)
-        NULL,               // The "void *arg" we discussed (We pass nothing)
-        10,                 // Priority (10 is high, meaning this task is important)
-        NULL,               // Task Handle (Not needed)
-        0                   // Pin this exclusively to Core 0
+        uart_rx_task,       // Function
+        "uart_rx_task",     // Name for debugging
+        4096,               // Stack size 
+        NULL,               
+        10,                 // 10 priority
+        NULL,               
+        0                   // Pin to Core 0
     );
 }
