@@ -2,6 +2,7 @@
 #include "freertos/task.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "freertos/semphr.h"
 
 #define UART_PORT_NUM      UART_NUM_2
 #define UART_TX_PIN        GPIO_NUM_17
@@ -21,7 +22,7 @@ typedef struct __attribute__((packed)) {
 // Payload blueprint
 typedef struct __attribute__((packed)){
     float pitch;
-    float roll;
+    float roll; 
     float yaw;
     float throttle;
 } KeysPayload;
@@ -35,7 +36,14 @@ typedef enum {
     READ_KEYS_PAYLOAD
 } SerialState;
 
-// FreeRTOS Task
+// Global instances
+ImuPayload global_imu;
+KeysPayload global_keys;
+
+// Semaphore
+SemaphoreHandle_t xMutex;
+
+// FreeRTOS UART task
 void uart_rx_task(void *pvParameters) 
 {
     uint8_t raw_bytes[BUF_SIZE];
@@ -56,6 +64,7 @@ void uart_rx_task(void *pvParameters)
                     if (byte == 0xAA) current_state = WAIT_FOR_BB;
                     else if (byte == 0xCC) current_state = WAIT_FOR_DD;
                     break;
+
 
                 case WAIT_FOR_BB:
                     if (byte == 0xBB) {
@@ -95,6 +104,16 @@ void uart_rx_task(void *pvParameters)
                         ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
                                  imu_data->pitch, imu_data->roll, imu_data->yaw);
                         
+                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+
+                            global_imu.pitch = imu_data->pitch;
+                            global_imu.roll = imu_data->roll;
+                            global_imu.yaw = imu_data->yaw;
+
+                            // Give key
+                            xSemaphoreGive(xMutex);
+                        }
+                        
                         current_state = WAIT_FOR_HEADER1;
 
                     }
@@ -112,6 +131,20 @@ void uart_rx_task(void *pvParameters)
                         ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f | Throttle: %.2f", 
                                  keys_data->pitch, keys_data->roll, keys_data->yaw, keys_data->throttle);
                         
+                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+
+                            global_keys.pitch = keys_data->pitch;
+                            global_keys.roll = keys_data->roll;
+                            global_keys.yaw = keys_data->yaw;
+                            global_keys.throttle = keys_data->throttle;
+                            
+                            // Give key
+                            xSemaphoreGive(xMutex);
+
+
+                        }
+                        
+                        
                         current_state = WAIT_FOR_HEADER1;
                     }
                     break;
@@ -119,6 +152,18 @@ void uart_rx_task(void *pvParameters)
             }
         }
     }
+}
+
+// FreeRTOS PID task
+void pid_task(void *pvParameters)
+{
+
+    while (1) {
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+
+    }
+
 }
 
 void app_main(void)
@@ -137,7 +182,10 @@ void app_main(void)
     uart_param_config(UART_PORT_NUM, &uart_config);
     uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-    // Launch FreeRTOS task
+    // Mutex
+    xMutex = xSemaphoreCreateMutex();
+
+    // Launch FreeRTOS tasks
     xTaskCreatePinnedToCore(
         uart_rx_task,       // Function
         "uart_rx_task",     // Name for debugging
