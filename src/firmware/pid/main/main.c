@@ -17,6 +17,13 @@
 #define KD 0.0f
 #define DT 0.01f
 
+// Maximum and minimum RPM
+#define MIN_RPM 0.0f
+#define MAX_RPM 12000.0f
+
+// Macro
+#define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
+
 static const char *TAG = "HUITZILIN_UART";
 
 // Payload blueprint
@@ -209,7 +216,7 @@ void pid_task(void *pvParameters)
         float d_roll = KD * (error_roll - prev_error_roll)/DT;
         float d_yaw = KD * (error_yaw - prev_error_yaw)/DT;
 
-        //PID
+        // PID
         float out_pitch = p_pitch + i_pitch + d_pitch;
         float out_roll = p_roll + i_roll + d_roll;
         float out_yaw = p_yaw + i_yaw + d_yaw;
@@ -218,6 +225,18 @@ void pid_task(void *pvParameters)
         prev_error_pitch = error_pitch;
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;
+
+        // RPM
+        float rotor_0 = local_keys.throttle - out_pitch - out_roll - out_yaw;
+        float rotor_1 = local_keys.throttle + out_pitch + out_roll - out_yaw;
+        float rotor_2 = local_keys.throttle - out_pitch + out_roll + out_yaw;
+        float rotor_3 = local_keys.throttle + out_pitch - out_roll - out_yaw;
+
+        // RPM limits
+        rotor_0 = CLAMP(rotor_0, MIN_RPM, MAX_RPM);
+        rotor_1 = CLAMP(rotor_1, MIN_RPM, MAX_RPM);
+        rotor_2 = CLAMP(rotor_2, MIN_RPM, MAX_RPM);
+        rotor_3 = CLAMP(rotor_3, MIN_RPM, MAX_RPM);
 
         vTaskDelay(pdMS_TO_TICKS(10));
 
