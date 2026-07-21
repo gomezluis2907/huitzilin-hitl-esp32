@@ -26,20 +26,30 @@
 
 static const char *TAG = "HUITZILIN_UART";
 
-// Payload blueprint
+// IMU payload blueprint
 typedef struct __attribute__((packed)) {
     float pitch;
     float roll;
     float yaw;
 } ImuPayload;
 
-// Payload blueprint
+// Keys payload blueprint
 typedef struct __attribute__((packed)){
     float pitch;
     float roll; 
     float yaw;
     float throttle;
 } KeysPayload;
+
+// RPM payload blueprint
+typedef struct __attribute__((packed)){
+    uint8_t header1;
+    uint8_t header2;
+    float rotor_0;
+    float rotor_1;
+    float rotor_2;
+    float rotor_3;
+} RpmDataPacket;
 
 // States
 typedef enum {
@@ -203,9 +213,9 @@ void pid_task(void *pvParameters)
 
         // Integral
         // Sum terms
-        integral_pitch += integral_pitch + error_pitch * DT;
-        integral_roll += integral_roll + error_roll * DT;
-        integral_yaw += integral_yaw + error_yaw * DT;
+        integral_pitch += error_pitch * DT;
+        integral_roll += error_roll * DT;
+        integral_yaw += error_yaw * DT;
 
         float i_pitch = KI * integral_pitch;
         float i_roll = KI * integral_roll;
@@ -237,6 +247,21 @@ void pid_task(void *pvParameters)
         rotor_1 = CLAMP(rotor_1, MIN_RPM, MAX_RPM);
         rotor_2 = CLAMP(rotor_2, MIN_RPM, MAX_RPM);
         rotor_3 = CLAMP(rotor_3, MIN_RPM, MAX_RPM);
+
+        // Local instance of RpmPayload
+        RpmDataPacket rpm_packet;
+        rpm_packet.header1 = 0xEE;
+        rpm_packet.header2 = 0xFF;
+        rpm_packet.rotor_0 = rotor_0;
+        rpm_packet.rotor_1 = rotor_1;
+        rpm_packet.rotor_2 = rotor_2;
+        rpm_packet.rotor_3 = rotor_3;
+
+        // Cast &rpm_packet as uint8_t in order for the compiler to read byte by byte
+        uint8_t* rpm_bytes = (uint8_t*)&rpm_packet;
+
+        // UART Tx
+        uart_write_bytes(UART_PORT_NUM, (const char*)rpm_bytes, sizeof(RpmDataPacket));
 
         vTaskDelay(pdMS_TO_TICKS(10));
 
@@ -272,5 +297,15 @@ void app_main(void)
         10,                 // 10 priority
         NULL,               
         0                   // Pin to Core 0
+    );
+
+    xTaskCreatePinnedToCore(
+        pid_task,           // Function
+        "pid_task",         // Name for debugging
+        4096,               // Stack size
+        NULL,
+        10,                 // 10 priority
+        NULL,
+        1                   // Pin to Core 1
     );
 }
