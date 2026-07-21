@@ -4,11 +4,18 @@
 #include "esp_log.h"
 #include "freertos/semphr.h"
 
+// UART definitions
 #define UART_PORT_NUM      UART_NUM_2
 #define UART_TX_PIN        GPIO_NUM_17
 #define UART_RX_PIN        GPIO_NUM_16
 #define UART_BAUD_RATE     115200       
 #define BUF_SIZE           256          
+
+// Tuning constants
+#define KP 1.0f
+#define KI 0.0f
+#define KD 0.0f
+#define DT 0.01f
 
 static const char *TAG = "HUITZILIN_UART";
 
@@ -157,8 +164,60 @@ void uart_rx_task(void *pvParameters)
 // FreeRTOS PID task
 void pid_task(void *pvParameters)
 {
+    // Integral and derivative history
+    float prev_error_pitch = 0, integral_pitch = 0;
+    float prev_error_roll = 0, integral_roll = 0;
+    float prev_error_yaw = 0, integral_yaw = 0;
+
 
     while (1) {
+
+        // Local copies
+        ImuPayload local_imu;
+        KeysPayload local_keys;
+
+        // Mutex
+        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+
+            local_imu = global_imu;
+            local_keys = global_keys;
+            xSemaphoreGive(xMutex);
+        }
+
+        // Current errors
+        float error_pitch = local_keys.pitch - local_imu.pitch;
+        float error_roll = local_keys.roll - local_imu.roll;
+        float error_yaw = local_keys.yaw - local_imu.yaw;
+
+        // Proportional
+        float p_pitch = KP * error_pitch;
+        float p_roll = KP * error_roll;
+        float p_yaw = KP * error_yaw;
+
+        // Integral
+        // Sum terms
+        integral_pitch += integral_pitch + error_pitch * DT;
+        integral_roll += integral_roll + error_roll * DT;
+        integral_yaw += integral_yaw + error_yaw * DT;
+
+        float i_pitch = KI * integral_pitch;
+        float i_roll = KI * integral_roll;
+        float i_yaw = KI * integral_yaw;
+
+        // Derivative
+        float d_pitch = KD * (error_pitch - prev_error_pitch)/DT;
+        float d_roll = KD * (error_roll - prev_error_roll)/DT;
+        float d_yaw = KD * (error_yaw - prev_error_yaw)/DT;
+
+        //PID
+        float out_pitch = p_pitch + i_pitch + d_pitch;
+        float out_roll = p_roll + i_roll + d_roll;
+        float out_yaw = p_yaw + i_yaw + d_yaw;
+
+        // Previous errors for the next loop
+        prev_error_pitch = error_pitch;
+        prev_error_roll = error_roll;
+        prev_error_yaw = error_yaw;
 
         vTaskDelay(pdMS_TO_TICKS(10));
 
