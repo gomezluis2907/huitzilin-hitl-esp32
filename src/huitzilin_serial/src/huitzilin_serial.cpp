@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <geometry_msgs/msg/twist.hpp>
+#include <thread>
 
 
 #pragma pack(push, 1) //No padding
@@ -35,6 +36,26 @@ struct KeysDataPacket
     float throttle;
 };
 #pragma pack(pop) // No padding
+
+#pragma pack(push, 1)
+struct RpmPayload
+{
+
+    float rotor_0;
+    float rotor_1;
+    float rotor_2;
+    float rotor_3;
+
+};
+#pragma pack(pop)
+
+enum SerialState {
+
+    WAIT_FOR_EE,
+    WAIT_FOR_FF,
+    READ_RPM_PAYLOAD
+
+};
 
 class HuitzilinSerialNode : public rclcpp::Node 
 {
@@ -82,13 +103,22 @@ public:
 
         RCLCPP_INFO(this->get_logger(), "Huitzilin Serial has been started");
         RCLCPP_INFO(this->get_logger(), "/dev/ttyUSB0 port opened at 115200 baud.");
+
+
+        // Thread
+        rx_thread_ = std::thread(&HuitzilinSerialNode::rxThread, this);
+        rx_thread_.detach();
     }
  
 private:
+
     // Declare member variables here so the whole class can see them
     int usb_port_; 
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
+
+    // Thread
+    std::thread rx_thread_;
     
 
     // Imu callback 
@@ -151,6 +181,62 @@ private:
         write(usb_port_, key_bytes, sizeof(KeysDataPacket));
 
     };
+
+    // PID thread
+    void rxThread()
+    {
+
+        uint8_t raw_bytes[256];
+        SerialState current_state = WAIT_FOR_EE;
+        uint8_t payload[16];
+        int payload_index = 0;
+
+
+        while(rclcpp::ok())
+        {
+
+            // Total number of bytes
+            int len = read(usb_port_, raw_bytes, 256);
+
+            for (int i = 0; i < len; i++) {
+
+                uint8_t byte = raw_bytes[i];
+
+                switch(current_state) {
+
+                    case WAIT_FOR_EE:
+                    if (byte == 0xEE) current_state = WAIT_FOR_FF;
+                    else current_state = WAIT_FOR_EE;
+                    break;
+
+                    case WAIT_FOR_FF:
+                    if (byte == 0xFF) { 
+                        current_state = READ_RPM_PAYLOAD;
+                        payload_index = 0;
+                    } else if (byte == 0xEE) {current_state = WAIT_FOR_FF;
+                    } else current_state = WAIT_FOR_EE;
+                    break;
+
+                    case READ_RPM_PAYLOAD:
+                    payload[payload_index] = byte;
+                    payload_index++;
+
+                    if (payload_index == 16){
+
+                        RpmPayload* rpm_data = (RpmPayload*)payload;
+
+                        current_state = WAIT_FOR_EE;
+
+                    }
+                    break;
+
+
+                }
+            }
+
+        }
+
+    }
 
 };
  
