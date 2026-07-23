@@ -1,16 +1,22 @@
 <launch>
 
-    <!--URDF path variable-->
+    <!--Variables-->
+
+    <!--URDF path-->
     <let name="urdf_path"
          value="$(find-pkg-share huitzilin_description)/urdf/huitzilin.urdf" />
 
-    <!--Bridge path variable-->
+    <!--Bridge path-->
     <let name="gazebo_config_path"
          value="$(find-pkg-share huitzilin_bringup)/config/gazebo_bridge.yaml" />
     
-    <!--RViz configuration variable-->
+    <!--RViz configuration-->
     <let name="rviz_config_path"
          value="$(find-pkg-share huitzilin_description)/rviz/urdf_config.rviz" />
+
+    <!--SDF path-->
+    <let name="sdf_path"
+         value="$(find-pkg-share huitzilin_bringup)/worlds/huitzilin.sdf" />
     
     <!--Robot State Publisher initialization-->
     <node pkg="robot_state_publisher" exec="robot_state_publisher">
@@ -23,7 +29,7 @@
 
     <!--Gazebo starts with an empty world and the time starts-->
     <include file="$(find-pkg-share ros_gz_sim)/launch/gz_sim.launch.py">
-        <arg name="gz_args" value="empty.sdf -r" />
+        <arg name="gz_args" value="-r -v 4 $(var sdf_path)" />
     </include>
 
     <!--The robot spawns in Gazebo-->
