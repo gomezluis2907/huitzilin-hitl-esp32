@@ -238,11 +238,14 @@ void pid_task(void *pvParameters)
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;
 
+        // Scale throttle
+        float base_rpm = local_keys.throttle * 800.0f;
+
         // RPM
-        float rotor_0 = local_keys.throttle - out_pitch - out_roll - out_yaw;
-        float rotor_1 = local_keys.throttle + out_pitch + out_roll - out_yaw;
-        float rotor_2 = local_keys.throttle - out_pitch + out_roll + out_yaw;
-        float rotor_3 = local_keys.throttle + out_pitch - out_roll - out_yaw;
+        float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;
+        float rotor_1 = base_rpm + out_pitch + out_roll - out_yaw;
+        float rotor_2 = base_rpm - out_pitch + out_roll + out_yaw;
+        float rotor_3 = base_rpm + out_pitch - out_roll - out_yaw;
 
         // RPM limits
         rotor_0 = CLAMP(rotor_0, MIN_RPM, MAX_RPM);
