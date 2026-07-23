@@ -3,6 +3,7 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "freertos/semphr.h"
+#include "driver/gpio.h"
 
 // UART definitions
 #define UART_PORT_NUM      UART_NUM_2
@@ -308,4 +309,8 @@ void app_main(void)
         NULL,
         1                   // Pin to Core 1
     );
+
+    while (1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }

@@ -11,7 +11,8 @@
 #include <actuator_msgs/msg/actuators.hpp>
 
 
-#pragma pack(push, 1) //No padding
+#pragma pack(push, 1) //No padding 
+
 struct ImuDataPacket 
 {
     // Magic Bytes
