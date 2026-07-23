@@ -9,6 +9,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <thread>
 #include <actuator_msgs/msg/actuators.hpp>
+#include <cstring>
 
 
 #pragma pack(push, 1) //No padding 
@@ -229,15 +230,16 @@ private:
 
                     if (payload_index == 16){
 
-                        RpmPayload* rpm_data = (RpmPayload*)payload;
+                        RpmPayload rpm_data;
+                        std::memcpy(&rpm_data, payload, sizeof(RpmPayload));
 
                         auto actuator_msg = actuator_msgs::msg::Actuators();
 
                         actuator_msg.velocity = {
-                            rpm_data->rotor_0, 
-                            rpm_data->rotor_1, 
-                            rpm_data->rotor_2, 
-                            rpm_data->rotor_3};              
+                            rpm_data.rotor_0, 
+                            rpm_data.rotor_1, 
+                            rpm_data.rotor_2, 
+                            rpm_data.rotor_3};              
                         
                         huitzilin_motor_speed_publisher_->publish(actuator_msg);
 

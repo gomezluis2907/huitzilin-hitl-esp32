@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "freertos/semphr.h"
 #include "driver/gpio.h"
+#include "math.h"
 
 // UART definitions
 #define UART_PORT_NUM      UART_NUM_2
@@ -248,6 +249,12 @@ void pid_task(void *pvParameters)
         rotor_1 = CLAMP(rotor_1, MIN_RPM, MAX_RPM);
         rotor_2 = CLAMP(rotor_2, MIN_RPM, MAX_RPM);
         rotor_3 = CLAMP(rotor_3, MIN_RPM, MAX_RPM);
+
+        // NaN fail-safe
+        if (isnan(rotor_0) || isinf(rotor_0)) rotor_0 = 0.0f;
+        if (isnan(rotor_1) || isinf(rotor_1)) rotor_1 = 0.0f;
+        if (isnan(rotor_2) || isinf(rotor_2)) rotor_2 = 0.0f;
+        if (isnan(rotor_3) || isinf(rotor_3)) rotor_3 = 0.0f;
 
         // Local instance of RpmPayload
         RpmDataPacket rpm_packet;
