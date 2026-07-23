@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <geometry_msgs/msg/twist.hpp>
 #include <thread>
+#include <actuator_msgs/msg/actuators.hpp>
 
 
 #pragma pack(push, 1) //No padding
@@ -72,6 +73,9 @@ public:
                                                                             std::bind(&HuitzilinSerialNode::callbackCmdVel, 
                                                                             this, std::placeholders::_1));
         
+        // /huitzilin/motor_speed publisher
+        huitzilin_motor_speed_publisher_ = this->create_publisher<actuator_msgs::msg::Actuators>("/huitzilin/motor_speed", 10);
+        
         // Open the USB port and assign it to the CLASS variable, not a local variable
         usb_port_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);
 
@@ -116,6 +120,7 @@ private:
     int usb_port_; 
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
+    rclcpp::Publisher<actuator_msgs::msg::Actuators>::SharedPtr huitzilin_motor_speed_publisher_;
 
     // Thread
     std::thread rx_thread_;
@@ -224,6 +229,16 @@ private:
                     if (payload_index == 16){
 
                         RpmPayload* rpm_data = (RpmPayload*)payload;
+
+                        auto actuator_msg = actuator_msgs::msg::Actuators();
+
+                        actuator_msg.velocity = {
+                            rpm_data->rotor_0, 
+                            rpm_data->rotor_1, 
+                            rpm_data->rotor_2, 
+                            rpm_data->rotor_3};              
+                        
+                        huitzilin_motor_speed_publisher_->publish(actuator_msg);
 
                         current_state = WAIT_FOR_EE;
 
