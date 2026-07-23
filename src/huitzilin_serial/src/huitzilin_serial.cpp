@@ -233,6 +233,17 @@ private:
                         RpmPayload rpm_data;
                         std::memcpy(&rpm_data, payload, sizeof(RpmPayload));
 
+                        // Detect corrupted packets
+                        if (std::isnan(rpm_data.rotor_0) || std::abs(rpm_data.rotor_0) > 15000.0f ||
+                            std::isnan(rpm_data.rotor_1) || std::abs(rpm_data.rotor_1) > 15000.0f ||
+                            std::isnan(rpm_data.rotor_2) || std::abs(rpm_data.rotor_2) > 15000.0f ||
+                            std::isnan(rpm_data.rotor_3) || std::abs(rpm_data.rotor_3) > 15000.0f) {
+                            
+                            // Throw away the corrupted packet
+                            current_state = WAIT_FOR_EE;
+                            break;
+                        }
+
                         auto actuator_msg = actuator_msgs::msg::Actuators();
 
                         actuator_msg.velocity = {
