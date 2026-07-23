@@ -14,7 +14,7 @@
 #define BUF_SIZE           256          
 
 // Tuning constants
-#define KP 1.0f
+#define KP 50.0f
 #define KI 0.0f
 #define KD 0.0f
 #define DT 0.01f
@@ -233,7 +233,7 @@ void pid_task(void *pvParameters)
         float out_roll = p_roll + i_roll + d_roll;
         float out_yaw = p_yaw + i_yaw + d_yaw;
 
-        // Previous errors for the next loop
+        // Previous errors for the next loopes
         prev_error_pitch = error_pitch;
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;
