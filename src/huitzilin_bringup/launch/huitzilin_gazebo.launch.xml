@@ -43,8 +43,5 @@
     <!--RViz starts-->
     <node pkg="rviz2" exec="rviz2" output="screen"
         args="-d $(var rviz_config_path)" />
-    
-    <node pkg="huitzilin_teleop" exec="huitzilin_teleop" output="screen" />
-
 
 </launch>

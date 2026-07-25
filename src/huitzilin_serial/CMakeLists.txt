@@ -13,9 +13,10 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs)
 find_package(actuator_msgs)
+find_package(nav_msgs REQUIRED)
 
 add_executable(huitzilin_serial src/huitzilin_serial.cpp)
-ament_target_dependencies(huitzilin_serial rclcpp sensor_msgs tf2 tf2_geometry_msgs geometry_msgs actuator_msgs)
+ament_target_dependencies(huitzilin_serial rclcpp sensor_msgs tf2 tf2_geometry_msgs geometry_msgs actuator_msgs nav_msgs)
 
 install(TARGETS
   huitzilin_serial

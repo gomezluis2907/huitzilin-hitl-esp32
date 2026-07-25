@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/imu.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <geometry_msgs/msg/quaternion.hpp>
@@ -66,8 +66,8 @@ public:
     HuitzilinSerialNode() : Node("huitzilin_serial") 
     {
         // /huitzilin/imu subscriber
-        imu_subscription_ = this->create_subscription<sensor_msgs::msg::Imu>("/huitzilin/imu", 10,
-                                                                        std::bind(&HuitzilinSerialNode::callbackHuitzilinImu, 
+        odom_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>("/huitzilin/odom", 10,
+                                                                        std::bind(&HuitzilinSerialNode::callbackHuitzilinOdom, 
                                                                         this, std::placeholders::_1));
         
         // /cmd_vel subscriber
@@ -120,7 +120,7 @@ private:
 
     // Declare member variables here so the whole class can see them
     int usb_port_; 
-    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscription_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscription_;
     rclcpp::Publisher<actuator_msgs::msg::Actuators>::SharedPtr huitzilin_motor_speed_publisher_;
 
@@ -128,15 +128,15 @@ private:
     std::thread rx_thread_;
     
 
-    // Imu callback 
-    void callbackHuitzilinImu(const sensor_msgs::msg::Imu::SharedPtr msg)
+    // Odometry callback 
+    void callbackHuitzilinOdom(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         // Load IMU data into a Quaternion object
         tf2::Quaternion q(
-            msg->orientation.x,
-            msg->orientation.y,
-            msg->orientation.z,
-            msg->orientation.w
+            msg->pose.pose.orientation.x,
+            msg->pose.pose.orientation.y,
+            msg->pose.pose.orientation.z,
+            msg->pose.pose.orientation.w
         );
 
         // Matrix 3x3 is created from the quaternion

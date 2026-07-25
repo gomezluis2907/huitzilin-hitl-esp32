@@ -16,10 +16,10 @@
   gz_type_name: "gz.msgs.Actuators"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/huitzilin/imu"
-  gz_topic_name: "/imu"
-  ros_type_name: "sensor_msgs/msg/Imu"
-  gz_type_name: "gz.msgs.IMU"
+- ros_topic_name: "/huitzilin/odom"
+  gz_topic_name: "/model/huitzilin/odometry"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
   direction: GZ_TO_ROS
 
 

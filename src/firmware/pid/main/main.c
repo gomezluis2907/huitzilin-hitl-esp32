@@ -21,7 +21,7 @@
 
 // Maximum and minimum RPM
 #define MIN_RPM 0.0f
-#define MAX_RPM 12000.0f
+#define MAX_RPM 800.0f
 
 // Macro
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
@@ -126,18 +126,28 @@ void uart_rx_task(void *pvParameters)
 
                         ImuPayload* imu_data = (ImuPayload*)payload;
 
-                        // Print 
-                        ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
-                                 imu_data->pitch, imu_data->roll, imu_data->yaw);
-                        
-                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+                        // NaN and Inf fail-safe
+                        if (!isnan(imu_data->pitch) && !isinf(imu_data->pitch) &&
+                            !isnan(imu_data->roll)  && !isinf(imu_data->roll)  &&
+                            !isnan(imu_data->yaw)   && !isinf(imu_data->yaw)) 
+                        {
+                            // Ignore frame glitch to exact zeros
+                            if (!(imu_data->pitch == 0.0f && imu_data->roll == 0.0f && imu_data->yaw == 0.0f && global_imu.yaw != 0.0f)) {
 
-                            global_imu.pitch = imu_data->pitch;
-                            global_imu.roll = imu_data->roll;
-                            global_imu.yaw = imu_data->yaw;
+                                // Print 
+                                ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
+                                         imu_data->pitch, imu_data->roll, imu_data->yaw);
+                                
+                                if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
 
-                            // Give key
-                            xSemaphoreGive(xMutex);
+                                    global_imu.pitch = imu_data->pitch;
+                                    global_imu.roll = imu_data->roll;
+                                    global_imu.yaw = imu_data->yaw;
+
+                                    // Give key
+                                    xSemaphoreGive(xMutex);
+                                }
+                            }
                         }
                         
                         current_state = WAIT_FOR_HEADER1;
@@ -238,8 +248,11 @@ void pid_task(void *pvParameters)
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;
 
+        // Hover baseline
+        float hover_baseline = 500.0f;
+
         // Scale throttle
-        float base_rpm = local_keys.throttle * 800.0f;
+        float base_rpm = hover_baseline + (local_keys.throttle * 300.0f);
 
         // RPM
         float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;
@@ -247,17 +260,17 @@ void pid_task(void *pvParameters)
         float rotor_2 = base_rpm - out_pitch + out_roll + out_yaw;
         float rotor_3 = base_rpm + out_pitch - out_roll - out_yaw;
 
-        // RPM limits
-        rotor_0 = CLAMP(rotor_0, MIN_RPM, MAX_RPM);
-        rotor_1 = CLAMP(rotor_1, MIN_RPM, MAX_RPM);
-        rotor_2 = CLAMP(rotor_2, MIN_RPM, MAX_RPM);
-        rotor_3 = CLAMP(rotor_3, MIN_RPM, MAX_RPM);
-
         // NaN fail-safe
         if (isnan(rotor_0) || isinf(rotor_0)) rotor_0 = 0.0f;
         if (isnan(rotor_1) || isinf(rotor_1)) rotor_1 = 0.0f;
         if (isnan(rotor_2) || isinf(rotor_2)) rotor_2 = 0.0f;
         if (isnan(rotor_3) || isinf(rotor_3)) rotor_3 = 0.0f;
+
+        // RPM limits
+        rotor_0 = CLAMP(rotor_0, MIN_RPM, MAX_RPM);
+        rotor_1 = CLAMP(rotor_1, MIN_RPM, MAX_RPM);
+        rotor_2 = CLAMP(rotor_2, MIN_RPM, MAX_RPM);
+        rotor_3 = CLAMP(rotor_3, MIN_RPM, MAX_RPM);
 
         // Local instance of RpmPayload
         RpmDataPacket rpm_packet;
