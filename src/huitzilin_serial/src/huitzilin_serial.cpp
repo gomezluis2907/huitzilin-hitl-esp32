@@ -176,10 +176,10 @@ private:
         key_packet.header1 = 0xCC;
         key_packet.header2 = 0xDD;
 
-        key_packet.pitch = msg->linear.x;
-        key_packet.roll = msg->linear.y;
-        key_packet.yaw = msg->angular.z;
-        key_packet.throttle = msg->linear.z;
+        key_packet.pitch = (float)msg->linear.x;
+        key_packet.roll = -(float)msg->angular.z;
+        key_packet.yaw = (float)msg->linear.y;
+        key_packet.throttle = (float)msg->linear.z;
 
         // Cast &key_packet as uint8_t in order for the compiler to read byte by byte
         uint8_t* key_bytes = (uint8_t*)&key_packet;
