@@ -16,12 +16,15 @@
 // Tuning constants
 #define KP 50.0f
 #define KI 0.0f
-#define KD 12.0f
+#define KD 0.0f
 #define DT 0.01f
 
 // Maximum and minimum RPM
 #define MIN_RPM 0.0f
 #define MAX_RPM 800.0f
+
+// Tilt threshold for disarm safety (~60 degrees in radians)
+#define MAX_TILT_RAD 1.05f
 
 // Macro
 #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
@@ -126,28 +129,18 @@ void uart_rx_task(void *pvParameters)
 
                         ImuPayload* imu_data = (ImuPayload*)payload;
 
-                        // NaN and Inf fail-safe
-                        if (!isnan(imu_data->pitch) && !isinf(imu_data->pitch) &&
-                            !isnan(imu_data->roll)  && !isinf(imu_data->roll)  &&
-                            !isnan(imu_data->yaw)   && !isinf(imu_data->yaw)) 
-                        {
-                            // Ignore frame glitch to exact zeros
-                            if (!(imu_data->pitch == 0.0f && imu_data->roll == 0.0f && imu_data->yaw == 0.0f && global_imu.yaw != 0.0f)) {
+                        // Print 
+                        ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
+                                 imu_data->pitch, imu_data->roll, imu_data->yaw);
+                        
+                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
 
-                                // Print 
-                                ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
-                                         imu_data->pitch, imu_data->roll, imu_data->yaw);
-                                
-                                if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+                            global_imu.pitch = imu_data->pitch;
+                            global_imu.roll = imu_data->roll;
+                            global_imu.yaw = imu_data->yaw;
 
-                                    global_imu.pitch = imu_data->pitch;
-                                    global_imu.roll = imu_data->roll;
-                                    global_imu.yaw = imu_data->yaw;
-
-                                    // Give key
-                                    xSemaphoreGive(xMutex);
-                                }
-                            }
+                            // Give key
+                            xSemaphoreGive(xMutex);
                         }
                         
                         current_state = WAIT_FOR_HEADER1;
@@ -177,9 +170,7 @@ void uart_rx_task(void *pvParameters)
                             // Give key
                             xSemaphoreGive(xMutex);
 
-
                         }
-                        
                         
                         current_state = WAIT_FOR_HEADER1;
                     }
@@ -198,6 +189,8 @@ void pid_task(void *pvParameters)
     float prev_error_roll = 0, integral_roll = 0;
     float prev_error_yaw = 0, integral_yaw = 0;
 
+    // Defines the physical RPM required just to hold the drone's weight
+    float hover_baseline = 680.0f;
 
     while (1) {
 
@@ -211,6 +204,25 @@ void pid_task(void *pvParameters)
             local_imu = global_imu;
             local_keys = global_keys;
             xSemaphoreGive(xMutex);
+        }
+
+        // Inversion check disarm guard
+        if (fabsf(local_imu.pitch) > MAX_TILT_RAD || fabsf(local_imu.roll) > MAX_TILT_RAD) {
+
+            // Disarm all motors on catastrophic crash
+            RpmDataPacket rpm_packet;
+            rpm_packet.header1 = 0xEE;
+            rpm_packet.header2 = 0xFF;
+            rpm_packet.rotor_0 = 0.0f;
+            rpm_packet.rotor_1 = 0.0f;
+            rpm_packet.rotor_2 = 0.0f;
+            rpm_packet.rotor_3 = 0.0f;
+
+            uint8_t* rpm_bytes = (uint8_t*)&rpm_packet;
+            uart_write_bytes(UART_PORT_NUM, (const char*)rpm_bytes, sizeof(RpmDataPacket));
+
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
         }
 
         // Current errors
@@ -248,11 +260,8 @@ void pid_task(void *pvParameters)
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;
 
-        // Hover baseline
-        float hover_baseline = 500.0f;
-
-        // Scale throttle
-        float base_rpm = hover_baseline + (local_keys.throttle * 300.0f);
+        // Scale baseline RPM linearly from throttle input 
+        float base_rpm = hover_baseline + (local_keys.throttle * 50.0f);
 
         // RPM
         float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;
