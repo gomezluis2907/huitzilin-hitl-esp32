@@ -23,6 +23,9 @@
 #define MIN_RPM 0.0f
 #define MAX_RPM 800.0f
 
+// Hover RPM
+#define HOVER_BASELINE 680.0f
+
 // Tilt threshold for disarm safety (~60 degrees in radians)
 #define MAX_TILT_RAD 1.05f
 
@@ -189,8 +192,8 @@ void pid_task(void *pvParameters)
     float prev_error_roll = 0, integral_roll = 0;
     float prev_error_yaw = 0, integral_yaw = 0;
 
-    // Defines the physical RPM required just to hold the drone's weight
-    float hover_baseline = 680.0f;
+    // Hover RPM
+    float hover_baseline = HOVER_BASELINE;
 
     while (1) {
 
@@ -261,7 +264,7 @@ void pid_task(void *pvParameters)
         prev_error_yaw = error_yaw;
 
         // Scale baseline RPM linearly from throttle input 
-        float base_rpm = hover_baseline + (local_keys.throttle * 50.0f);
+        float base_rpm = hover_baseline + local_keys.throttle;
 
         // RPM
         float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;

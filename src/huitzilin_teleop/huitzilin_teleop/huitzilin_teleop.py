@@ -31,7 +31,8 @@ class HuitzilinTeleopNode(Node):
         self.pitch_step = 0.15   # rad 
         self.roll_step  = 0.15   # rad 
         self.yaw_step   = 0.3    # rad/s
-        self.throttle_step = 1.0 
+        self.throttle_ascend = 50.0 # Offset added to hover_baseline when "i" is pressed
+        self.throttle_descend = -50.0 # Offset substracted to hover_baseline when "k" is pressed
 
         # Save terminal settings 
         self.settings = termios.tcgetattr(sys.stdin)
@@ -67,9 +68,9 @@ class HuitzilinTeleopNode(Node):
                 elif key == 'l':
                     msg.linear.y = -self.yaw_step     # Yaw riight
                 elif key == 'i':
-                    msg.linear.z = self.throttle_step # Ascend
+                    msg.linear.z = self.throttle_ascend # Ascend (+50 RPM)
                 elif key == 'k':
-                    msg.linear.z = -self.throttle_step# Descend
+                    msg.linear.z = -self.throttle_descend # Descend (-50 RPM)
                 elif key == ' ':
                     # Spacebar zeroing
                     msg.linear.x = 0.0
