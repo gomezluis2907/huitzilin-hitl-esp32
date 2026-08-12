@@ -70,7 +70,7 @@ class HuitzilinTeleopNode(Node):
                 elif key == 'i':
                     msg.linear.z = self.throttle_ascend # Ascend (+50 RPM)
                 elif key == 'k':
-                    msg.linear.z = -self.throttle_descend # Descend (-50 RPM)
+                    msg.linear.z = self.throttle_descend # Descend (-50 RPM)
                 elif key == ' ':
                     # Spacebar zeroing
                     msg.linear.x = 0.0
