@@ -24,7 +24,7 @@
 #define MAX_RPM 800.0f
 
 // Hover RPM
-#define HOVER_BASELINE 680.0f
+#define HOVER_BASELINE 681.7f
 
 // Tilt threshold for disarm safety (~60 degrees in radians)
 #define MAX_TILT_RAD 1.05f
