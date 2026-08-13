@@ -97,7 +97,6 @@ void uart_rx_task(void *pvParameters)
                     else if (byte == 0xCC) current_state = WAIT_FOR_DD;
                     break;
 
-
                 case WAIT_FOR_BB:
                     if (byte == 0xBB) {
                         current_state = READ_IMU_PAYLOAD;
@@ -265,7 +264,7 @@ void pid_task(void *pvParameters)
         float out_roll = p_roll + i_roll + d_roll;
         float out_yaw = p_yaw + i_yaw + d_yaw;
 
-        // Previous errors for the next loopes
+        // Previous errors for the next loops
         prev_error_pitch = error_pitch;
         prev_error_roll = error_roll;
         prev_error_yaw = error_yaw;

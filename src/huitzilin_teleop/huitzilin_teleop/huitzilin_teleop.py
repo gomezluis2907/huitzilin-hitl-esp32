@@ -66,7 +66,7 @@ class HuitzilinTeleopNode(Node):
                 elif key == 'j':
                     msg.linear.y = self.yaw_step      # Yaw left
                 elif key == 'l':
-                    msg.linear.y = -self.yaw_step     # Yaw riight
+                    msg.linear.y = -self.yaw_step     # Yaw right
                 elif key == 'i':
                     msg.linear.z = self.throttle_ascend # Ascend (+50 RPM)
                 elif key == 'k':
@@ -95,6 +95,7 @@ class HuitzilinTeleopNode(Node):
             stop_msg = Twist()
             self.publisher_.publish(stop_msg)
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+
 
 def main(args=None):
     rclpy.init(args=args)
