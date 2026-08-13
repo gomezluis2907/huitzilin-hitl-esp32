@@ -132,10 +132,9 @@ void uart_rx_task(void *pvParameters)
                         ImuPayload* imu_data = (ImuPayload*)payload;
 
                         // Print 
-                        ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", 
-                                 imu_data->pitch, imu_data->roll, imu_data->yaw);
+                        // ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", imu_data->pitch, imu_data->roll, imu_data->yaw);
                         
-                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+                        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5)))) {
 
                             global_imu.pitch = imu_data->pitch;
                             global_imu.roll = imu_data->roll;
@@ -159,10 +158,9 @@ void uart_rx_task(void *pvParameters)
                         KeysPayload* keys_data = (KeysPayload*)payload;
 
                         // Print
-                        ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f | Throttle: %.2f", 
-                                 keys_data->pitch, keys_data->roll, keys_data->yaw, keys_data->throttle);
+                        // ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f | Throttle: %.2f", keys_data->pitch, keys_data->roll, keys_data->yaw, keys_data->throttle);
                         
-                        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+                        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5))) {
 
                             global_keys.pitch = keys_data->pitch;
                             global_keys.roll = keys_data->roll;
@@ -201,7 +199,7 @@ void pid_task(void *pvParameters)
         KeysPayload local_keys;
 
         // Mutex
-        if (xSemaphoreTake(xMutex, portMAX_DELAY)) {
+        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5))) {
 
             local_imu = global_imu;
             local_keys = global_keys;
