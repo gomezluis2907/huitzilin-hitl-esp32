@@ -24,7 +24,7 @@
 #define MAX_RPM 800.0f
 
 // Hover RPM
-#define HOVER_BASELINE 681.7f
+#define HOVER_BASELINE 681.35f
 
 // Tilt threshold for disarm safety (~60 degrees in radians)
 #define MAX_TILT_RAD 1.05f
@@ -226,6 +226,13 @@ void pid_task(void *pvParameters)
 
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
+        }
+
+        // Clear integral accumulators when no keys pressed
+        if (local_keys.pitch == 0.0f && local_keys.roll == 0.0f && local_keys.yaw == 0.0f) {
+            integral_pitch = 0.0f;
+            integral_roll  = 0.0f;
+            integral_yaw   = 0.0f;
         }
 
         // Current errors
