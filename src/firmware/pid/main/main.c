@@ -269,7 +269,7 @@ void pid_task(void *pvParameters)
         float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;
         float rotor_1 = base_rpm + out_pitch + out_roll - out_yaw;
         float rotor_2 = base_rpm - out_pitch + out_roll + out_yaw;
-        float rotor_3 = base_rpm + out_pitch - out_roll - out_yaw;
+        float rotor_3 = base_rpm + out_pitch - out_roll + out_yaw;
 
         // NaN fail-safe
         if (isnan(rotor_0) || isinf(rotor_0)) rotor_0 = 0.0f;
