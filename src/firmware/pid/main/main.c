@@ -105,7 +105,7 @@ void uart_rx_task(void *pvParameters)
                         current_state = WAIT_FOR_BB;
                     } else if (byte == 0xCC) {
                         current_state = WAIT_FOR_DD;
-                    }else {
+                    } else {
                         current_state = WAIT_FOR_HEADER1;
                     }
                     break;
@@ -128,24 +128,20 @@ void uart_rx_task(void *pvParameters)
                     payload_index++;
 
                     if (payload_index == 12) {
-
                         ImuPayload* imu_data = (ImuPayload*)payload;
 
-                        // Print 
+                        // High-frequency logging commented out to avoid UART buffer saturation
                         // ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f", imu_data->pitch, imu_data->roll, imu_data->yaw);
                         
-                        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5)))) {
-
+                        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5))) {
                             global_imu.pitch = imu_data->pitch;
-                            global_imu.roll = imu_data->roll;
-                            global_imu.yaw = imu_data->yaw;
+                            global_imu.roll  = imu_data->roll;
+                            global_imu.yaw   = imu_data->yaw;
 
-                            // Give key
                             xSemaphoreGive(xMutex);
                         }
                         
                         current_state = WAIT_FOR_HEADER1;
-
                     }
                     break;
 
@@ -154,22 +150,18 @@ void uart_rx_task(void *pvParameters)
                     payload_index++;
 
                     if (payload_index == 16) {
-
                         KeysPayload* keys_data = (KeysPayload*)payload;
 
-                        // Print
+                        // High-frequency logging commented out to avoid UART buffer saturation
                         // ESP_LOGI(TAG, "Pitch: %.2f | Roll: %.2f | Yaw: %.2f | Throttle: %.2f", keys_data->pitch, keys_data->roll, keys_data->yaw, keys_data->throttle);
                         
                         if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5))) {
-
-                            global_keys.pitch = keys_data->pitch;
-                            global_keys.roll = keys_data->roll;
-                            global_keys.yaw = keys_data->yaw;
+                            global_keys.pitch    = keys_data->pitch;
+                            global_keys.roll     = keys_data->roll;
+                            global_keys.yaw      = keys_data->yaw;
                             global_keys.throttle = keys_data->throttle;
                             
-                            // Give key
                             xSemaphoreGive(xMutex);
-
                         }
                         
                         current_state = WAIT_FOR_HEADER1;
@@ -184,24 +176,23 @@ void uart_rx_task(void *pvParameters)
 // FreeRTOS PID task
 void pid_task(void *pvParameters)
 {
-    // Integral and derivative history
-    float prev_error_pitch = 0, integral_pitch = 0;
-    float prev_error_roll = 0, integral_roll = 0;
-    float prev_error_yaw = 0, integral_yaw = 0;
+    // Integral and derivative initialization
+    float prev_error_pitch = 0.0f, integral_pitch = 0.0f;
+    float prev_error_roll  = 0.0f, integral_roll  = 0.0f;
+    float prev_error_yaw   = 0.0f, integral_yaw   = 0.0f;
 
     // Hover RPM
     float hover_baseline = HOVER_BASELINE;
 
     while (1) {
 
-        // Local copies
-        ImuPayload local_imu;
-        KeysPayload local_keys;
+        // Local copies zero-initialized
+        ImuPayload local_imu = {0};
+        KeysPayload local_keys = {0};
 
-        // Mutex
+        // Mutex with finite timeout
         if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(5))) {
-
-            local_imu = global_imu;
+            local_imu  = global_imu;
             local_keys = global_keys;
             xSemaphoreGive(xMutex);
         }
@@ -225,7 +216,7 @@ void pid_task(void *pvParameters)
             continue;
         }
 
-        // Clear integral accumulators when no keys pressed
+        // Clear integral accumulators when setpoints are neutral
         if (local_keys.pitch == 0.0f && local_keys.roll == 0.0f && local_keys.yaw == 0.0f) {
             integral_pitch = 0.0f;
             integral_roll  = 0.0f;
@@ -234,43 +225,47 @@ void pid_task(void *pvParameters)
 
         // Current errors
         float error_pitch = local_keys.pitch - local_imu.pitch;
-        float error_roll = local_keys.roll - local_imu.roll;
-        float error_yaw = local_keys.yaw - local_imu.yaw;
+        float error_roll  = local_keys.roll  - local_imu.roll;
+        float error_yaw   = local_keys.yaw   - local_imu.yaw;
 
         // Proportional
         float p_pitch = KP * error_pitch;
-        float p_roll = KP * error_roll;
-        float p_yaw = KP * error_yaw;
+        float p_roll  = KP * error_roll;
+        float p_yaw   = KP * error_yaw;
 
         // Integral
-        // Sum terms
         integral_pitch += error_pitch * DT;
-        integral_roll += error_roll * DT;
-        integral_yaw += error_yaw * DT;
+        integral_roll  += error_roll  * DT;
+        integral_yaw   += error_yaw   * DT;
 
         float i_pitch = KI * integral_pitch;
-        float i_roll = KI * integral_roll;
-        float i_yaw = KI * integral_yaw;
+        float i_roll  = KI * integral_roll;
+        float i_yaw   = KI * integral_yaw;
 
         // Derivative
-        float d_pitch = KD * (error_pitch - prev_error_pitch)/DT;
-        float d_roll = KD * (error_roll - prev_error_roll)/DT;
-        float d_yaw = KD * (error_yaw - prev_error_yaw)/DT;
+        float d_pitch = KD * (error_pitch - prev_error_pitch) / DT;
+        float d_roll  = KD * (error_roll  - prev_error_roll)  / DT;
+        float d_yaw   = KD * (error_yaw   - prev_error_yaw)   / DT;
 
         // PID
         float out_pitch = p_pitch + i_pitch + d_pitch;
-        float out_roll = p_roll + i_roll + d_roll;
-        float out_yaw = p_yaw + i_yaw + d_yaw;
+        float out_roll  = p_roll  + i_roll  + d_roll;
+        float out_yaw   = p_yaw   + i_yaw   + d_yaw;
+
+        // Finite value safety guards on control outputs
+        if (!isfinite(out_pitch)) out_pitch = 0.0f;
+        if (!isfinite(out_roll))  out_roll  = 0.0f;
+        if (!isfinite(out_yaw))   out_yaw   = 0.0f;
 
         // Previous errors for the next loops
         prev_error_pitch = error_pitch;
-        prev_error_roll = error_roll;
-        prev_error_yaw = error_yaw;
+        prev_error_roll  = error_roll;
+        prev_error_yaw   = error_yaw;
 
         // Scale baseline RPM linearly from throttle input 
         float base_rpm = hover_baseline + local_keys.throttle;
 
-        // RPM
+        // RPM mixing
         float rotor_0 = base_rpm - out_pitch - out_roll - out_yaw;
         float rotor_1 = base_rpm + out_pitch + out_roll - out_yaw;
         float rotor_2 = base_rpm - out_pitch + out_roll + out_yaw;
@@ -297,12 +292,13 @@ void pid_task(void *pvParameters)
         rpm_packet.rotor_2 = rotor_2;
         rpm_packet.rotor_3 = rotor_3;
 
-        // Cast &rpm_packet as uint8_t in order for the compiler to read byte by byte
+        // Cast &rpm_packet as uint8_t
         uint8_t* rpm_bytes = (uint8_t*)&rpm_packet;
 
         // UART Tx
         uart_write_bytes(UART_PORT_NUM, (const char*)rpm_bytes, sizeof(RpmDataPacket));
 
+        // Always yield to keep the FreeRTOS Task Watchdog Timer happy
         vTaskDelay(pdMS_TO_TICKS(10));
 
     }
@@ -328,13 +324,13 @@ void app_main(void)
     // Mutex
     xMutex = xSemaphoreCreateMutex();
 
-    // Launch FreeRTOS tasks
+    // Launch FreeRTOS tasks with expanded 8192-byte stack allocation
     xTaskCreatePinnedToCore(
         uart_rx_task,       // Function
         "uart_rx_task",     // Name for debugging
-        4096,               // Stack size 
+        8192,               // Stack size increased from 4096 to prevent overflow
         NULL,               
-        10,                 // 10 priority
+        10,                 // Priority
         NULL,               
         0                   // Pin to Core 0
     );
@@ -342,9 +338,9 @@ void app_main(void)
     xTaskCreatePinnedToCore(
         pid_task,           // Function
         "pid_task",         // Name for debugging
-        4096,               // Stack size
+        8192,               // Stack size increased from 4096 to prevent overflow
         NULL,
-        10,                 // 10 priority
+        10,                 // Priority
         NULL,
         1                   // Pin to Core 1
     );
