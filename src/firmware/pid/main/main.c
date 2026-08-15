@@ -177,9 +177,14 @@ void uart_rx_task(void *pvParameters)
 void pid_task(void *pvParameters)
 {
     // Integral and derivative initialization
-    float prev_error_pitch = 0.0f, integral_pitch = 0.0f;
-    float prev_error_roll  = 0.0f, integral_roll  = 0.0f;
-    float prev_error_yaw   = 0.0f, integral_yaw   = 0.0f;
+    float integral_pitch = 0.0f;
+    float integral_roll  = 0.0f;
+    float integral_yaw   = 0.0f;
+
+    // Previous measurements
+    float prev_meas_pitch = 0.0f;
+    float prev_meas_roll  = 0.0f;
+    float prev_meas_yaw   = 0.0f;
 
     // Hover RPM
     float hover_baseline = HOVER_BASELINE;
@@ -242,10 +247,10 @@ void pid_task(void *pvParameters)
         float i_roll  = KI * integral_roll;
         float i_yaw   = KI * integral_yaw;
 
-        // Derivative
-        float d_pitch = KD * (error_pitch - prev_error_pitch) / DT;
-        float d_roll  = KD * (error_roll  - prev_error_roll)  / DT;
-        float d_yaw   = KD * (error_yaw   - prev_error_yaw)   / DT;
+        // Derivative on measurement 
+        float d_pitch = -KD * (local_imu.pitch - prev_meas_pitch) / DT;
+        float d_roll  = -KD * (local_imu.roll  - prev_meas_roll)  / DT;
+        float d_yaw   = -KD * (local_imu.yaw   - prev_meas_yaw)   / DT;
 
         // PID
         float out_pitch = p_pitch + i_pitch + d_pitch;
@@ -257,10 +262,10 @@ void pid_task(void *pvParameters)
         if (!isfinite(out_roll))  out_roll  = 0.0f;
         if (!isfinite(out_yaw))   out_yaw   = 0.0f;
 
-        // Previous errors for the next loops
-        prev_error_pitch = error_pitch;
-        prev_error_roll  = error_roll;
-        prev_error_yaw   = error_yaw;
+        // Previous measurements for the next loop's derivative term
+        prev_meas_pitch = local_imu.pitch;
+        prev_meas_roll  = local_imu.roll;
+        prev_meas_yaw   = local_imu.yaw;
 
         // Scale baseline RPM linearly from throttle input 
         float base_rpm = hover_baseline + local_keys.throttle;
