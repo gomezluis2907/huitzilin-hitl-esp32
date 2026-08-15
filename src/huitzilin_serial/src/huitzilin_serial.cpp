@@ -104,6 +104,11 @@ public:
         tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
         tty.c_oflag &= ~OPOST;
 
+        tty.c_cflag |= (CLOCAL | CREAD);
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL | INLCR | IGNCR | ISTRIP | BRKINT | PARMRK);
+        tty.c_cc[VMIN]  = 0;
+        tty.c_cc[VTIME] = 1;
+
         // Apply the settings immediately (TCSANOW)
         tcsetattr(usb_port_, TCSANOW, &tty);
 
