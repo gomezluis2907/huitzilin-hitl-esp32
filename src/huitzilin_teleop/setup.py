@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='gomezluis2907',
     maintainer_email='gomezluis2907@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Custom keyboard teleoperation node for Huitzilin Aerospace HITL simulation.',
+    license='MIT',
     extras_require={
         'test': [
             'pytest',
